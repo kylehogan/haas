@@ -23,10 +23,11 @@ Setup Virtual Environment
 Setup HaaS
 ==========
 
- cd into root directory:
+ add a HaaS user:
   ::
-
-   cd /
+  
+   useradd haas_user -d /var/lib/haas -m -r
+   passwd haas_user <password>
 
  clone + install HaaS:
   ::
@@ -39,12 +40,6 @@ Setup HaaS
   ::
 
    mv /haas/examples/haas.cfg.dev-no-hardware /etc/haas.cfg
-
- add a HaaS user:
-  ::
-  
-   useradd haas_user -d /var/lib/haas -m -r
-   passwd haas_user <password>
 
  /etc/haas.cfg should have its permissions set to read-only and ownership set to the haas_user:
   ::
@@ -64,9 +59,12 @@ Setup HaaS
    cd ~
 
  initialize the database:
-  ::
+ 
+   **Note:** If using PostgreSQL complete steps for alternative database setup below before initializing the database
 
-   haas init_db
+ ::
+
+    haas init_db
 
 Test
 ====
