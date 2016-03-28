@@ -30,7 +30,7 @@ class Ipmi(Obm):
     user = Column(String, nullable=False)
     password = Column(String, nullable=False)
 
-    api_name = 'http://schema.massopencloud.org/haas/v0/obm/ipmi-obsolete'
+    api_name = 'http://schema.massopencloud.org/haas/v0/obm/ipmi_obsolete'
 
     __mapper_args__ = {
         'polymorphic_identity': api_name,
