@@ -24,13 +24,13 @@ from haas.dev_support import no_dry_run
 from subprocess import call, check_call, Popen, PIPE
 import os
 
-class Ipmi_obsolete(Obm):
+class Ipmi_1_5(Obm):
     id = Column(Integer, ForeignKey('obm.id'), primary_key=True)
     host = Column(String, nullable=False)
     user = Column(String, nullable=False)
     password = Column(String, nullable=False)
 
-    api_name = 'http://schema.massopencloud.org/haas/v0/obm/ipmi_obsolete'
+    api_name = 'http://schema.massopencloud.org/haas/v0/obm/ipmi_1_5'
 
     __mapper_args__ = {
         'polymorphic_identity': api_name,
