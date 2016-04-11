@@ -165,10 +165,10 @@ def user_create(username, password, is_admin):
     })
 
 @cmd
-def network_create(network, creator, access, net_id):
+def network_create(network, owner, access, net_id):
     """Create a link-layer <network>.  See docs/networks.md for details"""
     url = object_url('network', network)
-    do_put(url, data={'creator': creator,
+    do_put(url, data={'owner': owner,
                       'access': access,
                       'net_id': net_id})
 
@@ -176,7 +176,7 @@ def network_create(network, creator, access, net_id):
 def network_create_simple(network, project):
     """Create <network> owned by project.  Specific case of network_create"""
     url = object_url('network', network)
-    do_put(url, data={'creator': project,
+    do_put(url, data={'owner': project,
                       'access': project,
                       'net_id': ""})
 
@@ -211,17 +211,17 @@ def user_remove_project(user, project):
     do_post(url, data={'project': project})
 
 @cmd
-def project_add_network(project, network):
-   """Add <network> to <project>"""
-   url = object_url('project', project, 'add_network')
-   do_post(url, data={'network': network})
+def network_grant_project_access(project, network):
+   """Add <project> to <network> access"""
+   url = object_url('network', network, 'access', project)
+   do_put(url)
 
 
 @cmd
-def project_remove_network(project, network):
-   """Remove <network> from <project>"""
-   url = object_url('project', project, 'remove_network')
-   do_post(url, data={'network': network})
+def network_revoke_project_access(project, network):
+   """Remove <project> from <network> access"""
+   url = object_url('network', network, 'access', project)
+   do_delete(url)
 
 @cmd
 def project_create(project):

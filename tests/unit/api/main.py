@@ -133,34 +133,53 @@ class TestProjectCreateDelete:
             api.project_create('acme-corp')
 
 class TestProjectAddDeleteNetwork:
-     """Tests for adding and deleting a network from a project"""
+    """Tests for adding and deleting a network from a project"""
      
-     def test_project_add_network(self):
-         api.project_create('acme-corp')
-         api.project_create('anvil-nextgen')
-         network_create_simple('hammernet', 'acme-corp')
-         api.project_add_network('anvil-nextgen', 'hammernet')
-         network = api._must_find(model.Network, 'hammernet')
-         project = api._must_find(model.Project, 'anvil-nextgen')
-         assert project in network.access
-         assert network in project.networks_access
+    def test_network_grant_project_access(self):
+        api.project_create('acme-corp')
+        api.project_create('anvil-nextgen')
+        network_create_simple('hammernet', 'acme-corp')
+        api.network_grant_project_access('anvil-nextgen', 'hammernet')
+        network = api._must_find(model.Network, 'hammernet')
+        project = api._must_find(model.Project, 'anvil-nextgen')
+        assert project in network.access
+        assert network in project.networks_access
          
-     def test_project_remove_network(self):
-         api.project_create('acme-corp')
-         api.project_create('anvil-nextgen')
-         network_create_simple('hammernet', 'acme-corp')
-         api.project_add_network('anvil-nextgen', 'hammernet')
-         api.project_remove_network('anvil-nextgen', 'hammernet')
-         network = api._must_find(model.Network, 'hammernet')
-         project = api._must_find(model.Project, 'anvil-nextgen')
-         assert project not in network.access
-         assert network not in project.networks_access
+    def test_network_revoke_project_access(self):
+        api.project_create('acme-corp')
+        api.project_create('anvil-nextgen')
+        network_create_simple('hammernet', 'acme-corp')
+        api.network_grant_project_access('anvil-nextgen', 'hammernet')
+        api.network_revoke_project_access('anvil-nextgen', 'hammernet')
+        network = api._must_find(model.Network, 'hammernet')
+        project = api._must_find(model.Project, 'anvil-nextgen')
+        assert project not in network.access
+        assert network not in project.networks_access
 
-     def test_project_remove_network_creator(self):
-         api.project_create('acme-corp')
-         network_create_simple('hammernet', 'acme-corp')
-         with pytest.raises(api.BlockedError):
-             api.project_remove_network('acme-corp', 'hammernet')
+    def test_network_revoke_project_access_connected_node(self):
+        api.project_create('acme-corp')
+        api.project_create('anvil-nextgen')
+        network_create_simple('hammernet', 'acme-corp')
+        api.network_grant_project_access('anvil-nextgen', 'hammernet')
+        api.node_register('node-99', obm={
+             "type": "http://schema.massopencloud.org/haas/v0/obm/ipmi",
+             "host": "ipmihost",
+             "user": "root",
+             "password": "tapeworm"})
+
+        api.project_connect_node('anvil-nextgen', 'node-99')
+        api.node_register_nic('node-99', 'eth0', 'DE:AD:BE:EF:20:14')
+        api.node_connect_network('node-99', 'eth0', 'hammernet')
+        deferred.apply_networking()
+       
+        with pytest.raises(api.BlockedError):
+            api.network_revoke_project_access('anvil-nextgen', 'hammernet')
+
+    def test_project_remove_network_owner(self):
+        api.project_create('acme-corp')
+        network_create_simple('hammernet', 'acme-corp')
+        with pytest.raises(api.BlockedError):
+            api.network_revoke_project_access('acme-corp', 'hammernet')
 
 class TestNetworking:
 
@@ -1143,7 +1162,7 @@ class TestNetworkCreateDelete:
         api.project_create('anvil-nextgen')
         network_create_simple('hammernet', 'anvil-nextgen')
         net = api._must_find(model.Network, 'hammernet')
-        assert net.creator.label == 'anvil-nextgen'
+        assert net.owner.label == 'anvil-nextgen'
 
     def test_network_create_badproject(self):
         """Tests that creating a network with a nonexistent project fails"""
@@ -1506,7 +1525,7 @@ class TestQuery:
         }
         api.network_delete('netA')
         api.network_create('spiderwebs',
-                           creator='admin',
+                           owner='admin',
                            access='',
                            net_id='451')
 
@@ -1535,7 +1554,7 @@ class TestQuery:
         api.node_register_nic('node-100', '100-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-oldtimer')
         api.project_connect_node('anvil-oldtimer', 'node-100')
-        api.project_add_network('anvil-oldtimer', 'hammernet')
+        api.network_grant_project_access('anvil-oldtimer', 'hammernet')
         api.node_connect_network('node-100', '100-eth0', 'hammernet')
         deferred.apply_networking()
 
@@ -1544,11 +1563,13 @@ class TestQuery:
             'node-99':
                 {
                     'nic': '99-eth0',
+                    'channel': get_network_allocator().get_default_channel(),
                     'project': 'anvil-nextgen'
                 },
             'node-100': 
                 {
                     'nic': '100-eth0',
+                    'channel': get_network_allocator().get_default_channel(),
                     'project': 'anvil-oldtimer'
                 }
             }
@@ -1574,7 +1595,7 @@ class TestQuery:
         api.node_register_nic('node-100', '100-eth0', 'DE:AD:BE:EF:20:14')
         api.project_create('anvil-oldtimer')
         api.project_connect_node('anvil-oldtimer', 'node-100')
-        api.project_add_network('anvil-oldtimer', 'hammernet')
+        api.network_grant_project_access('anvil-oldtimer', 'hammernet')
         api.node_connect_network('node-100', '100-eth0', 'hammernet')
         deferred.apply_networking()
         
@@ -1583,6 +1604,7 @@ class TestQuery:
             'node-99':
             {
                 'nic': '99-eth0',
+                'channel': get_network_allocator().get_default_channel(),
                 'project': 'anvil-nextgen'
             },
         }
@@ -1881,21 +1903,21 @@ class Test_show_network:
         result = json.loads(api.show_network('spiderwebs'))
         assert result == {
             'name': 'spiderwebs',
-            'creator': 'anvil-nextgen',
+            'owner': 'anvil-nextgen',
             'access': ['anvil-nextgen'],
             "channels": ["null"]
         }
 
     def test_show_network_public(self):
         api.network_create('public-network',
-                           creator='admin',
+                           owner='admin',
                            access='',
                            net_id='432')
 
         result = json.loads(api.show_network('public-network'))
         assert result == {
             'name': 'public-network',
-            'creator': 'admin',
+            'owner': 'admin',
             'access': None,
             'channels': ['null'],
         }
@@ -1903,14 +1925,14 @@ class Test_show_network:
     def test_show_network_provider(self):
         api.project_create('anvil-nextgen')
         api.network_create('spiderwebs',
-                           creator='admin',
+                           owner='admin',
                            access='anvil-nextgen',
                            net_id='451')
 
         result = json.loads(api.show_network('spiderwebs'))
         assert result == {
             'name': 'spiderwebs',
-            'creator': 'admin',
+            'owner': 'admin',
             'access': ['anvil-nextgen'],
             'channels': ['null'],
         }
@@ -1933,7 +1955,7 @@ class TestFancyNetworkCreate:
         api.network_create('hammernet', 'anvil-nextgen', 'anvil-nextgen', '')
         project = api._must_find(model.Project, 'anvil-nextgen')
         network = api._must_find(model.Network, 'hammernet')
-        assert network.creator is project
+        assert network.owner is project
         assert project in network.access
         assert network.allocated is True
 
@@ -1961,7 +1983,7 @@ class TestFancyNetworkCreate:
                 network = 'hammernet' + project_api + net_id
                 api.network_create(network, 'admin', project_api, net_id)
                 network = api._must_find(model.Network, network)
-                assert network.creator is None
+                assert network.owner is None
                 if project_db is None:
                     assert not network.access
                 else:

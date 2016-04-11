@@ -286,6 +286,33 @@ def headnode_cleanup(request):
 
     request.addfinalizer(undefine_headnodes)
 
+def additional_db():
+    initial_db()
+    manhattan = db.session.query(Project).filter_by(label="manhattan").one()
+    runway = db.session.query(Project).filter_by(label="runway").one()
+    with app.app_context():
+        networks=[ 
+            {
+                'owner': None,
+                'access': [manhattan, runway],
+                'allocated': False,
+                'network_id': 'manhattan_runway_provider_chan',
+                'label': 'manhattan_runway_provider',
+            },
+            {
+                'owner': manhattan,
+                'access': [manhattan, runway],
+                'allocated': True,
+                'label': 'manhattan_runway_pxe',
+            },
+        ]
+
+        for net in networks:
+            if net['allocated']:
+                net['network_id'] = \
+                    get_network_allocator().get_new_network_id()
+            db.session.add(Network(**net))
+        db.session.commit()
 
 def initial_db():
     """Populates the database with a useful set of objects.
@@ -320,65 +347,52 @@ def initial_db():
 
         networks = [
             {
-                'creator': None,
+                'owner': None,
                 'access': [],
                 'allocated': True,
                 'label': 'stock_int_pub',
             },
             {
-                'creator': None,
+                'owner': None,
                 'access': [],
                 'allocated': False,
                 'network_id': 'ext_pub_chan',
                 'label': 'stock_ext_pub',
             },
             {
-                # For some tests, we want things to initialyl be attached to a
+                # For some tests, we want things to initially be attached to a
                 # network. This one serves that purpose; using the others would
                 # interfere with some of the network_delete tests.
-                'creator': None,
+                'owner': None,
                 'access': [],
                 'allocated': True,
                 'label': 'pub_default',
             },
             {
-                'creator': runway,
+                'owner': runway,
                 'access': [runway],
                 'allocated': True,
                 'label': 'runway_pxe'
             },
             {
-                'creator': None,
+                'owner': None,
                 'access': [runway],
                 'allocated': False,
                 'network_id': 'runway_provider_chan',
                 'label': 'runway_provider',
             },
             {
-                'creator': manhattan,
+                'owner': manhattan,
                 'access': [manhattan],
                 'allocated': True,
                 'label': 'manhattan_pxe'
             },
             {
-                'creator': None,
+                'owner': None,
                 'access': [manhattan],
                 'allocated': False,
                 'network_id': 'manhattan_provider_chan',
                 'label': 'manhattan_provider',
-            },
-            {
-                'creator': None,
-                'access': [manhattan, runway],
-                'allocated': False,
-                'network_id': 'manhattan_runway_provider_chan',
-                'label': 'manhattan_runway_provider',
-            },
-            {
-                'creator': manhattan,
-                'access': [manhattan, runway],
-                'allocated': True,
-                'label': 'manhattan_runway_pxe',
             },
         ]
 
