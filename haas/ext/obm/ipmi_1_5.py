@@ -39,7 +39,7 @@ class Ipmi_1_5(Obm):
     @staticmethod
     def validate(kwargs):
         schema.Schema({
-            'type': Ipmi.api_name,
+            'type': Ipmi_1_5.api_name,
             'host': basestring,
             'user': basestring,
             'password': basestring,
