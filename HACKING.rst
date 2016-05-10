@@ -21,7 +21,7 @@ automatically by the instructions below.
 Creating HaaS System User
 =========================
 
-Create a system user ``haas_user`` with::
+Create a system user ``haas`` with::
 
   sudo useradd haas_user -d /var/lib/haas -m -r
   passwd haas_user <password>
@@ -149,6 +149,16 @@ Versions of ``python`` prior to 2.7 don't have ``importlib`` as part of their st
   pip install importlib
 
 You may get an error 'psycopg2 package not found' when you do 'haas-admin db create'
-in the next step if you are using PostgreSQL database. You may need to run::
+in the next step if you are using PostgreSQL database. 
+
+if its Centos::  
+
+  yum install postgresql-devel
+
+if its Ubuntu::
+  
+  sudo apt-get install libpq-dev
+
+before installing ``psycopg2`` in the virtualenv for HaaS::
 
   pip install psycopg2
