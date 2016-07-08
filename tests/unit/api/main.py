@@ -1647,7 +1647,7 @@ class TestQuery_unpopulated_db:
                   "host": "ipmihost",
                   "user": "root",
                   "password": "tapeworm"})
-        result = json.loads(api.list_free_nodes())
+        result = json.loads(api.list_nodes("free"))
         # For the lists to be equal, the ordering must be the same:
         result.sort()
         assert result == [
@@ -1672,7 +1672,7 @@ class TestQuery_unpopulated_db:
         ]
 
     def test_no_free_nodes(self):
-        assert json.loads(api.list_free_nodes()) == []
+        assert json.loads(api.list_nodes("ree")) == []
 
     def test_some_non_free_nodes(self):
         """Make sure that allocated nodes don't show up in the free list."""
@@ -1696,7 +1696,7 @@ class TestQuery_unpopulated_db:
         api.project_connect_node('anvil-nextgen', 'robocop')
         api.project_connect_node('anvil-nextgen', 'data')
 
-        assert json.loads(api.list_free_nodes()) == ['master-control-program']
+        assert json.loads(api.list_nodes("free")) == ['master-control-program']
 
     def test_show_node(self):
         """Test the show_node api call.
