@@ -130,14 +130,14 @@ class TestProjectAddDeleteNetwork:
                                          'additional_database',
                                          'server_init',
                                          'with_request_context')
-     
+
     def test_network_grant_project_access(self):
         api.network_grant_project_access('manhattan', 'runway_pxe')
         network = api._must_find(model.Network, 'runway_pxe')
         project = api._must_find(model.Project, 'manhattan')
         assert project in network.access
         assert network in project.networks_access
-         
+
     def test_network_revoke_project_access(self):
         api.network_revoke_project_access('runway', 'runway_provider')
         network = api._must_find(model.Network, 'runway_provider')
@@ -149,7 +149,7 @@ class TestProjectAddDeleteNetwork:
         api.node_register_nic('runway_node_0', 'eth0', 'DE:AD:BE:EF:20:14')
         api.node_connect_network('runway_node_0', 'eth0', 'runway_provider')
         deferred.apply_networking()
-       
+
         with pytest.raises(api.BlockedError):
             api.network_revoke_project_access('runway', 'runway_provider')
 
@@ -1355,17 +1355,22 @@ class Test_switch_delete_port:
 
 class Test_list_switches:
 
+    pytestmark = pytest.mark.usefixtures('configure',
+                                         'fresh_database',
+                                         'server_init',
+                                         'with_request_context')
+
     def test_list_switches(self):
         assert json.loads(api.list_switches()) == []
-        api.switch_register('sw0', type=MOCK_SWITCH_TYPE, 
+        api.switch_register('sw0', type=MOCK_SWITCH_TYPE,
 		username="foo", password="bar", hostname="baz")
         api._must_find(model.Switch, 'sw0')
         assert json.loads(api.list_switches()) == ['sw0']
 
-        api.switch_register('mock', type=MOCK_SWITCH_TYPE, 
+        api.switch_register('mock', type=MOCK_SWITCH_TYPE,
 		username="user", password="password", hostname="host")
         api._must_find(model.Switch, 'mock')
-        api.switch_register('cirius', type=MOCK_SWITCH_TYPE, 
+        api.switch_register('cirius', type=MOCK_SWITCH_TYPE,
 		username="user", password="password", hostname="switch")
         api._must_find(model.Switch, 'cirius')
         assert json.loads(api.list_switches()) == [
