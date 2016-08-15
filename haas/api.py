@@ -172,13 +172,13 @@ def network_revoke_project_access(project, network):
     network = _must_find(model.Network, network)
     project = _must_find(model.Project, project)
     #must be admin, the owner of the network, or <project> to remove <project>.
-    
+
     if network.access:
         if not (auth_backend.have_admin() or \
            (network.owner is not None and auth_backend.have_project_access(network.owner)) or \
-           (project in network.access and auth_backend.have_project_access(project))):            
+           (project in network.access and auth_backend.have_project_access(project))):
             raise AuthorizationError("You are not authorized to remove the specified project form this network.")
-   
+
     if project not in network.access:
         raise NotFoundError("Network %r is not in project %r"%
                             (network.label, project.label))
@@ -187,6 +187,7 @@ def network_revoke_project_access(project, network):
         raise BlockedError("Project %r is owner of network %r and its access cannot be removed"%
                            (project.label, network.label))
 
+    # TODO: Make this and the next loop more SQLAlchemy-friendly
     for attachment in network.attachments:
         if attachment.nic.owner.project.label == project.label:
             raise BlockedError("Project still has node(s) attached to the network")
@@ -199,7 +200,7 @@ def network_revoke_project_access(project, network):
 
     network.access.remove(project)
     db.session.commit()
-                       
+
                             # Node Code #
                             #############
 
@@ -609,7 +610,7 @@ def list_networks():
         else:
             net = {'network_id': n.network_id, 'projects': None}
         result[n.label] = net
-            
+
     return json.dumps(result, sort_keys = True)
 
 @rest_call('GET', '/network/<network>/attachments', schema=Schema({
@@ -618,34 +619,36 @@ def list_networks():
 def list_network_attachments(network, project=None):
     """Lists all the attachments from <project> for <network>
 
-    If <project> is not specified, lists all attachments for <network>
+    If <project> is `None`, lists all attachments for <network>
     """
     auth_backend = get_auth_backend()
     network = _must_find(model.Network, network)
-    
+
+    # Access checking.
+    if project is None:
+        # List all nodes connected to network.
+        # Only the project that owns the network should be able to list attached nodes
+        auth_backend.require_project_access(network.owner)
+    else:
+        project = _must_find(model.Project, project)
+        if not auth_backend.have_project_access(network.owner):
+            # User is not authorized for the network-owning project. Check the
+            # project's access to the network queried and to the specific project
+            # they queried
+            if not (project in network.access and auth_backend.have_project_access(project)):
+                raise AuthorizationError("You do not have access to this project.")
+
     attachments = network.attachments
     nodes = {}
-    authorized = auth_backend.have_project_access(network.owner)
-
-    if project is not None:
-        project = _must_find(model.Project, project)
-        for proj in network.access:
-            authorized = authorized or ((proj.label == project.label) and auth_backend.have_project_access(project))
-        if not authorized:
-            raise AuthorizationError("You do not have access to this project.")
-    else:
-        #only the project that owns the network should be able to list attached nodes
-        auth_backend.require_project_access(network.owner)
-
-    for attachment in attachments: 
+    for attachment in attachments:
         if project is None or project is attachment.nic.owner.project:
             node = {
-                'nic': attachment.nic.label, 
-                'channel': attachment.channel, 
+                'nic': attachment.nic.label,
+                'channel': attachment.channel,
                 'project': attachment.nic.owner.project.label
             }
             nodes[attachment.nic.owner.label] = node
-        
+
     return json.dumps(nodes, sort_keys=True)
 
 @rest_call('PUT', '/network/<network>', Schema({
