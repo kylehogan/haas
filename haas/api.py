@@ -149,8 +149,13 @@ def network_grant_project_access(project, network):
     """
     network = _must_find(model.Network, network)
     project = _must_find(model.Project, project)
-    #must be admin or the owner of the network to add projects
-    get_auth_backend().require_project_access(network.owner)
+    auth_backend = get_auth_backend()
+
+    # Must be admin or the owner of the network to add projects
+    if network.owner is None:
+        auth_backend.require_admin()
+    else:
+        auth_backend.require_project_access(network.owner)
 
     if project in network.access:
         raise DuplicateError('Network %s is already in project %s'%
@@ -624,14 +629,25 @@ def list_network_attachments(network, project=None):
     auth_backend = get_auth_backend()
     network = _must_find(model.Network, network)
 
+    # Determine if caller has access to owning project
+    if network.owner is None:
+        owner_access = auth_backend.have_admin()
+    else:
+        owner_access = auth_backend.have_project_access(network.owner)
+
     # Access checking.
     if project is None:
-        # List all nodes connected to network.
-        # Only the project that owns the network should be able to list attached nodes
-        auth_backend.require_project_access(network.owner)
+        # No project means list all connected nodes
+        # Only access to the project that owns the network or an admin can do
+        # this
+        if not owner_access:
+            raise AuthorizationError("Operation requires admin rights or"
+                                     " access to network's owning project")
     else:
+        # Only list the nodes coming from the specified project that are
+        # connected to this network.
         project = _must_find(model.Project, project)
-        if not auth_backend.have_project_access(network.owner):
+        if not owner_access:
             # User is not authorized for the network-owning project. Check the
             # project's access to the network queried and to the specific project
             # they queried
@@ -759,7 +775,7 @@ def show_network(network):
         authorized = False
         for proj in network.access:
             authorized = authorized or auth_backend.have_project_access(proj)
-            
+
         if not authorized:
             raise AuthorizationError("You do not have access to this network.")
 
