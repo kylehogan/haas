@@ -142,22 +142,22 @@ def project_detach_node(project, node):
     'project': basestring, 'network': basestring,
 }))
 def network_grant_project_access(project, network):
-   """Add access to <network> to <project>.
+    """Add access to <network> to <project>.
 
-   If the project or network does not exist, a NotFoundError will be raised.
-   If the project already has access to the network a DuplicateError will be raised.
-   """
-   network = _must_find(model.Network, network)
-   project = _must_find(model.Project, project)
-   #must be admin or the owner of the network to add projects
-   get_auth_backend().require_project_access(network.owner)
+    If the project or network does not exist, a NotFoundError will be raised.
+    If the project already has access to the network a DuplicateError will be raised.
+    """
+    network = _must_find(model.Network, network)
+    project = _must_find(model.Project, project)
+    #must be admin or the owner of the network to add projects
+    get_auth_backend().require_project_access(network.owner)
 
-   if project in network.access:
-       raise DuplicateError('Network %s is already in project %s'%
+    if project in network.access:
+        raise DuplicateError('Network %s is already in project %s'%
                             (network.label, project.label))
 
-   network.access.append(project)
-   db.session.commit()
+    network.access.append(project)
+    db.session.commit()
 
 @rest_call('DELETE', '/network/<network>/access/<project>', Schema({
     'project': basestring, 'network': basestring,
